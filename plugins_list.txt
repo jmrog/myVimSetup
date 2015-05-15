@@ -2,6 +2,7 @@ HTML-AutoCloseTag
 ctrlp.vim
 delimitMate
 ex-autocomplpop
+html5.vim
 indentLine
 minibufexpl.vim
 nerdtree

@@ -69,23 +69,23 @@ let g:ctrlp_working_path_mode = 'rw'
 
 " Syntastic settings
 " Show errors and warnings as 'signs'
-let g:syntastic_enable_signs = 1
-let g:syntastic_error_symbol = '✘'
-let g:syntastic_warning_symbol = "▲"
-augroup mySyntastic
-    au!
-    au FileType tex let b:syntastic_mode = "passive"
-augroup END
+"let g:syntastic_enable_signs = 1
+"let g:syntastic_error_symbol = '✘'
+"let g:syntastic_warning_symbol = "▲"
+"augroup mySyntastic
+    "au!
+    "au FileType tex let b:syntastic_mode = "passive"
+"augroup END
 " Defaults suggested by Syntastic
 set statusline+=%#warningmsg#
-set statusline+=%{SyntasticStatuslineFlag()}
+"set statusline+=%{SyntasticStatuslineFlag()}
 set statusline+=%*
 " Always show errors in the location list
-let g:syntastic_always_populate_loc_list = 1
+"let g:syntastic_always_populate_loc_list = 1
 " Automatically close error window when no errors present, but don't auto-open ever
-let g:syntastic_auto_loc_list = 2
-let g:syntastic_check_on_open = 1
-let g:syntastic_check_on_wq = 0
+"let g:syntastic_auto_loc_list = 2
+"let g:syntastic_check_on_open = 1
+"let g:syntastic_check_on_wq = 0
 
 " easytags stuff
 " Where to look for tag files
@@ -128,3 +128,5 @@ set nofoldenable
 "
 " \r sets the root to /Users/jason.rogers/dev/tmngi
 nnoremap <silent> <leader>r :BookmarkToRoot tmng<CR>
+" \s resets the syntax highlighting when it goes bad
+nnoremap <silent> <leader>s :syntax sync fromstart<CR>
