@@ -23,5 +23,10 @@
   "bugs": {
     "url": "https://github.com/jmrog/myVimSetup/issues"
   },
-  "homepage": "https://github.com/jmrog/myVimSetup#readme"
+  "homepage": "https://github.com/jmrog/myVimSetup#readme",
+  "dependencies": {
+    "bluebird": "^3.1.1",
+    "mv": "^2.1.1",
+    "nodegit": "^0.6.3"
+  }
 }

@@ -1,59 +1,40 @@
-#/usr/bin/env node
+#!/usr/bin/env node
 var fs = require('fs');
 var path = require('path');
 var Promise = require('bluebird');
 var git = require('nodegit');
+var mv = require('mv');
 
 var plugins = require('./plugins');
-var paths = {
-    VIMDIR: path.join(process.env.HOME, '.vim'),
-    AUTOLOADDIR: path.join(VIMDIR, 'autoload'),
-    BUNDLEDIR: path.join(VIMDIR, 'bundle'),
-    COLORSDIR: path.join(VIMDIR, 'colors')
-};
-var permissionsToSet = '0755';
+var config = require('./config');
+var paths = config.paths;
+var permissionsToSet = config.permissionsToSet;
 
 function createDir(dirPath) {
-    var promisedMkdir = Promise.promisify(fs.mkdir);
-    fs.mkdir(dirPath, function(err) {
-        if (err) {
-            return reject(err);
-        }
-        resolve();
-    });
+    return Promise.promisify(fs.mkdir, { context: fs })(dirPath);
 }
 
 function ensureDirExists(dirPath) {
-    fs.access(dirPath, fs.F_OK, function(err) {
-        if (err) {
-            return createDir(dirPath).then(resolve, reject);
-        }
-        return resolve();
-    });
+    var promisedAccess = Promise.promisify(fs.access, { context: fs });
+    return promisedAccess(dirPath, fs.F_OK).catch(createDir.bind(null, dirPath));
 }
 
 function ensureDirPermissions(dirPath) {
-    fs.chmod(dirPath, permissionsToSet, function(err) {
-        if (err) {
-            return reject(err);
-        }
-        return resolve();
-    });
+    return Promise.promisify(fs.chmod, { context: fs })(dirPath, permissionsToSet);
 }
 
 function getSubDirPaths() {
     var filterVimKey = function(key) { return key !== 'VIMDIR' };
     var getDirPath = function(key) { return paths[key] };
-
     return Object.keys(paths).filter(filterVimKey).map(getDirPath);
 }
     
 function ensureSubDirsExist() {
-    return Promise.all(getSubDirPaths().map(Promise.promisify(ensureDirExists)));
+    return Promise.all(getSubDirPaths().map(ensureDirExists));
 }
         
 function ensureSubDirsPermissions() {
-    return Promise.all(getSubDirPaths().map(Promise.promisify(ensureDirPermissions)));
+    return Promise.all(getSubDirPaths().map(ensureDirPermissions));
 }
 
 // Returns an array of promises to execute in parallel.
@@ -61,18 +42,32 @@ function getPluginPromises() {
     return Object.keys(plugins).reduce(function(promiseAccumulator, key) {
         return promiseAccumulator.concat(
             Object.keys(plugins[key]).map(function(subKey) {
-                var targetDir = key === 'bundles' ? BUNDLEDIR :
-                                key === 'colors' ? COLORSDIR :
-                                VIMDIR;
                 // `git.Clone` returns a promise
-                return git.Clone(plugins[key][subKey], targetDir);
+                return git.Clone(plugins[key][subKey], subKey);
             })
         );
     }, []);
 }
 
+function moveFiles() {
+    Object.keys(plugins).forEach(function(key) {
+        Object.keys(plugins[key]).forEach(function(subKey) {
+            switch (key) {
+                case 'manager':
+                    return mv(path.join(__dirname, subKey, '*'), paths.VIMDIR, function() {});
+                case 'bundles':
+                    return mv(path.join(__dirname, subKey), paths.BUNDLEDIR, function() {});
+                case 'colors':
+                    return mv(path.join(__dirname, subKey), paths.COLORSDIR, function() {});
+            }
+        });
+    });
+}
+        
+
 function installPlugins() {
-    return Promise.all(getPluginPromises());
+    return Promise.all(getPluginPromises())
+        .then(moveFiles);
 }
 
 function logOutcome(err) {
@@ -86,16 +81,14 @@ function logOutcome(err) {
 }
 
 function install() {
-    Promise.promisify(ensureDirExists.bind(null, path.VIMDIR))
-        .then(function() {
-            // the promise here mustn't be started before the previous one finishes,
-            // which is why we've wrapped it in a "factory" function here.
-            // see: http://pouchdb.com/2015/05/18/we-have-a-problem-with-promises.html
-            return Promise.promisify(ensureDirPermissions.bind(null, path.VIMDIR));
-        })
+    ensureDirExists(paths.VIMDIR)
+        .then(ensureDirPermissions.bind(null, paths.VIMDIR))
         .then(ensureSubDirsExist)
         .then(ensureSubDirsPermissions)
         .then(installPlugins)
-        .then(lo
+        .then(logOutcome)
+        .catch(logOutcome);
 }
+
+install();
 
