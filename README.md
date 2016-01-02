@@ -1,5 +1,5 @@
 # myVimSetup
-This used to just be a convenient backup of my .vimrc file, together with a generated list of plugins I'm using. However, I've now added an `install` script that can be run (using Node.js) to automatically download and install a bundler (pathogen, in this case), plugins, and color schemes. The things to be installed are defined in `plugins.js`. Their destinations (and the default permissions for the Vim directories) are defined in `config.js`. (The bare list of plugins is also still available in `plugins_list.txt`.
+This used to just be a convenient backup of my .vimrc file, together with a generated list of plugins I'm using. However, I've now added an `install` script that can be run (using Node.js) to automatically download and install a bundler (pathogen, in this case), plugins, and color schemes. The things to be installed are defined in `plugins.js`. Their destinations (and the default permissions for the Vim directories) are defined in `config.js`. (The bare list of plugins is also still available in `plugins_list.txt`.)
 
 Usage (of the Installer Script)
 ===============================
