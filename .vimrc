@@ -53,7 +53,7 @@ set colorcolumn=105
 nnoremap j gj
 nnoremap k gk
 
-colorscheme molokai
+colorscheme monokai
 
 " Open/close NERDTree tabs with \t
 nmap <silent> <leader>t :NERDTreeTabsToggle<CR>

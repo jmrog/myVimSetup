@@ -1,0 +1,120 @@
+#!/usr/bin/env node
+var fs = require('fs');
+var path = require('path');
+var Promise = require('bluebird');
+var git = require('nodegit');
+
+var plugins = require('./plugins');
+var config = require('./config');
+var paths = config.paths;
+var permissionsToSet = config.permissionsToSet;
+
+function createDir(dirPath) {
+    return Promise.promisify(fs.mkdir, { context: fs })(dirPath);
+}
+
+function ensureDirExists(dirPath) {
+    var promisedAccess = Promise.promisify(fs.access, { context: fs });
+    return promisedAccess(dirPath, fs.F_OK).catch(createDir.bind(null, dirPath));
+}
+
+function ensureDirPermissions(dirPath) {
+    return Promise.promisify(fs.chmod, { context: fs })(dirPath, permissionsToSet);
+}
+
+function getSubDirPaths() {
+    var filterVimKey = function(key) { return key !== 'VIMDIR' };
+    var getDirPath = function(key) { return paths[key] };
+    return Object.keys(paths).filter(filterVimKey).map(getDirPath);
+}
+    
+function ensureSubDirsExist() {
+    return Promise.all(getSubDirPaths().map(ensureDirExists));
+}
+        
+function ensureSubDirsPermissions() {
+    return Promise.all(getSubDirPaths().map(ensureDirPermissions));
+}
+
+// Returns an array of promises to execute in parallel from the plugins map.
+// `fn` should return the promise for each element; it will be invoked with
+// the plugin category (e.g., 'bundles') and the plugin name.
+function getPluginPromises(fn, context) {
+    return Object.keys(plugins).reduce(function(promiseAccumulator, key) {
+        return promiseAccumulator.concat(
+            Object.keys(plugins[key]).map(function(subKey) {
+                return fn.call(context || null, key, subKey);
+            })
+        );
+    }, []);
+}
+
+function getPluginGitPromises() {
+    return Promise.all(getPluginPromises(function(key, subKey) {
+        return git.Clone(plugins[key][subKey], subKey);
+    }));
+}
+
+function getPluginMovePromises() {
+    var promisifiedRename = Promise.promisify(fs.rename, { context: fs });
+
+    return Promise.all(getPluginPromises(function(key, subKey) {
+        switch (key) {
+            case 'manager':
+                // TODO: Generalize. Need to decide how to handle globs. Hard-coding pathogen for now.
+                // FIXME: This leaves some files lying around for now.
+                return promisifiedRename(
+                    path.join(__dirname, subKey, 'autoload', 'pathogen.vim'),
+                    path.join(paths.AUTOLOADDIR, 'pathogen.vim')
+                );
+            case 'bundles':
+                return promisifiedRename(
+                    path.join(__dirname, subKey),
+                    path.join(paths.BUNDLEDIR, subKey)
+                );
+            case 'colors':
+                // TODO: Generalize. Need to decide how to handle globs. Hard-coding monokai for now.
+                // FIXME: This leaves some files lying around for now.
+                return promisifiedRename(
+                    path.join(__dirname, subKey, 'colors', 'monokai.vim'),
+                    path.join(paths.COLORSDIR, 'monokai.vim')
+                );
+        }
+    }));
+}
+
+function installPlugins() {
+    return getPluginGitPromises()
+        .then(getPluginMovePromises);
+}
+
+function copyConfig() {
+    return new Promise(function(resolve, reject) {
+        var readStream = fs.createReadStream(path.join(__dirname, '.vimrc'), { autoClose: true });
+        readStream.pipe(fs.createWriteStream(path.join(process.env.HOME, '.vimrc')));
+        readStream.on('end', resolve);
+    });
+}
+
+function logSuccess() {
+    console.log('\n...Installation successful!\n');
+}
+
+function logFailure(err) {
+    console.error('\n...UH OH! An error occurred.');
+    console.error(err + '\n');
+}
+
+function install() {
+    ensureDirExists(paths.VIMDIR)
+        .then(ensureDirPermissions.bind(null, paths.VIMDIR))
+        .then(ensureSubDirsExist)
+        .then(ensureSubDirsPermissions)
+        .then(installPlugins)
+        .then(copyConfig)
+        .then(logSuccess)
+        .catch(logFailure);
+}
+
+install();
+

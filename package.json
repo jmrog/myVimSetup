@@ -1,0 +1,31 @@
+{
+  "name": "my-vim-setup",
+  "version": "1.0.0",
+  "description": "Auto-installs the essentials for my preferred vim setup.",
+  "main": "install",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jmrog/myVimSetup.git"
+  },
+  "keywords": [
+    "vim",
+    "vi"
+  ],
+  "author": "Jason Rogers <jason@jmichaelrogers.com>",
+  "license": "ISC",
+  "private": true,
+  "bugs": {
+    "url": "https://github.com/jmrog/myVimSetup/issues"
+  },
+  "homepage": "https://github.com/jmrog/myVimSetup#readme",
+  "dependencies": {
+    "bluebird": "^3.1.1",
+    "nodegit": "^0.6.3"
+  }
+}
