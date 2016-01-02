@@ -1,0 +1,101 @@
+#/usr/bin/env node
+var fs = require('fs');
+var path = require('path');
+var Promise = require('bluebird');
+var git = require('nodegit');
+
+var plugins = require('./plugins');
+var paths = {
+    VIMDIR: path.join(process.env.HOME, '.vim'),
+    AUTOLOADDIR: path.join(VIMDIR, 'autoload'),
+    BUNDLEDIR: path.join(VIMDIR, 'bundle'),
+    COLORSDIR: path.join(VIMDIR, 'colors')
+};
+var permissionsToSet = '0755';
+
+function createDir(dirPath) {
+    var promisedMkdir = Promise.promisify(fs.mkdir);
+    fs.mkdir(dirPath, function(err) {
+        if (err) {
+            return reject(err);
+        }
+        resolve();
+    });
+}
+
+function ensureDirExists(dirPath) {
+    fs.access(dirPath, fs.F_OK, function(err) {
+        if (err) {
+            return createDir(dirPath).then(resolve, reject);
+        }
+        return resolve();
+    });
+}
+
+function ensureDirPermissions(dirPath) {
+    fs.chmod(dirPath, permissionsToSet, function(err) {
+        if (err) {
+            return reject(err);
+        }
+        return resolve();
+    });
+}
+
+function getSubDirPaths() {
+    var filterVimKey = function(key) { return key !== 'VIMDIR' };
+    var getDirPath = function(key) { return paths[key] };
+
+    return Object.keys(paths).filter(filterVimKey).map(getDirPath);
+}
+    
+function ensureSubDirsExist() {
+    return Promise.all(getSubDirPaths().map(Promise.promisify(ensureDirExists)));
+}
+        
+function ensureSubDirsPermissions() {
+    return Promise.all(getSubDirPaths().map(Promise.promisify(ensureDirPermissions)));
+}
+
+// Returns an array of promises to execute in parallel.
+function getPluginPromises() {
+    return Object.keys(plugins).reduce(function(promiseAccumulator, key) {
+        return promiseAccumulator.concat(
+            Object.keys(plugins[key]).map(function(subKey) {
+                var targetDir = key === 'bundles' ? BUNDLEDIR :
+                                key === 'colors' ? COLORSDIR :
+                                VIMDIR;
+                // `git.Clone` returns a promise
+                return git.Clone(plugins[key][subKey], targetDir);
+            })
+        );
+    }, []);
+}
+
+function installPlugins() {
+    return Promise.all(getPluginPromises());
+}
+
+function logOutcome(err) {
+    if (!err) {
+        console.log('\n...Installation successful!\n');
+    }
+    else {
+        console.error('\n...UH OH! An error occurred.');
+        console.error(err + '\n');
+    }
+}
+
+function install() {
+    Promise.promisify(ensureDirExists.bind(null, path.VIMDIR))
+        .then(function() {
+            // the promise here mustn't be started before the previous one finishes,
+            // which is why we've wrapped it in a "factory" function here.
+            // see: http://pouchdb.com/2015/05/18/we-have-a-problem-with-promises.html
+            return Promise.promisify(ensureDirPermissions.bind(null, path.VIMDIR));
+        })
+        .then(ensureSubDirsExist)
+        .then(ensureSubDirsPermissions)
+        .then(installPlugins)
+        .then(lo
+}
+
