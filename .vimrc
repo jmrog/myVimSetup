@@ -54,6 +54,10 @@ nnoremap j gj
 nnoremap k gk
 
 colorscheme monokai
+" Do not let the colorscheme override background transparency:
+hi Normal ctermbg=none
+hi NonText ctermbg=none
+hi LineNr ctermbg=none
 
 " Open/close NERDTree tabs with \t
 nmap <silent> <leader>t :NERDTreeTabsToggle<CR>
